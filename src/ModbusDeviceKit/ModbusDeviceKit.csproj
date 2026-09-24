@@ -11,7 +11,7 @@
   <PropertyGroup>
     <IsPackable>true</IsPackable>
     <PackageId>ModbusDeviceKit</PackageId>
-    <Version>1.0.0</Version>
+    <Version>1.0.1</Version>
     <Authors>Semih Bener</Authors>
     <Product>ModbusDeviceKit</Product>
     <Title>ModbusDeviceKit</Title>
@@ -23,7 +23,7 @@
     <RepositoryUrl>https://github.com/semihbenerr/ModbusDeviceKit.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
-    <PackageReleaseNotes>1.0.0: Initial release - JSON device profiles, Modbus RTU / TCP / RTU-over-TCP transports, block reads, byte-order support, tare/calibration, Polly retries.</PackageReleaseNotes>
+    <PackageReleaseNotes>1.0.1: English README (Turkish version: README.tr.md on GitHub). No code changes.&#10;1.0.0: Initial release - JSON device profiles, Modbus RTU / TCP / RTU-over-TCP transports, block reads, byte-order support, tare/calibration, Polly retries.</PackageReleaseNotes>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
