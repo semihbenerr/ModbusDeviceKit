@@ -6,6 +6,6 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Deterministic>true</Deterministic>
     <Company>ModbusDeviceKit</Company>
-    <Copyright>Copyright © ModbusDeviceKit Contributors</Copyright>
+    <Copyright>Copyright © Semih Bener</Copyright>
   </PropertyGroup>
 </Project>

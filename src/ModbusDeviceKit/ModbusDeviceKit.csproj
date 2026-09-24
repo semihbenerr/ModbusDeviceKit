@@ -12,7 +12,7 @@
     <IsPackable>true</IsPackable>
     <PackageId>ModbusDeviceKit</PackageId>
     <Version>1.0.0</Version>
-    <Authors>ModbusDeviceKit Contributors</Authors>
+    <Authors>Semih Bener</Authors>
     <Product>ModbusDeviceKit</Product>
     <Title>ModbusDeviceKit</Title>
     <Description>Profile-driven Modbus RTU/TCP device reader for industrial test automation. Describe a device's register map (load cells, torque sensors, temperature/pressure transmitters) in a JSON profile and read all values as named, scaled, tared engineering values - with block-read optimisation, byte-order handling, Polly-based retries and async APIs. Built on NModbus.</Description>
