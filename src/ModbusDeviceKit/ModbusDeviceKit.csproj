@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>ModbusDeviceKit</RootNamespace>
+    <AssemblyName>ModbusDeviceKit</AssemblyName>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <!-- NuGet package metadata -->
+  <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <PackageId>ModbusDeviceKit</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>ModbusDeviceKit Contributors</Authors>
+    <Product>ModbusDeviceKit</Product>
+    <Title>ModbusDeviceKit</Title>
+    <Description>Profile-driven Modbus RTU/TCP device reader for industrial test automation. Describe a device's register map (load cells, torque sensors, temperature/pressure transmitters) in a JSON profile and read all values as named, scaled, tared engineering values - with block-read optimisation, byte-order handling, Polly-based retries and async APIs. Built on NModbus.</Description>
+    <PackageTags>modbus;modbus-rtu;modbus-tcp;nmodbus;industrial;automation;test-automation;load-cell;sensor;scada;plc</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageReleaseNotes>1.0.0: Initial release - JSON device profiles, Modbus RTU / TCP / RTU-over-TCP transports, block reads, byte-order support, tare/calibration, Polly retries.</PackageReleaseNotes>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" Link="README.md" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NModbus" Version="3.0.83" />
+    <PackageReference Include="Polly.Core" Version="8.8.0" />
+    <PackageReference Include="System.IO.Ports" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="ModbusDeviceKit.Tests" />
+  </ItemGroup>
+
+</Project>

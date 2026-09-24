@@ -1,0 +1,78 @@
+{
+  // Load cell amplifier with a Modbus RTU (RS-485) interface.
+  // Addresses are zero-based protocol addresses (holding register 40101 -> address 100).
+  "deviceName": "LoadCell_XYZ123",
+  "description": "XYZ123 load cell amplifier, 0-5 kN, RS-485 Modbus RTU",
+  "protocol": "ModbusRTU",
+  "slaveId": 1,
+  "byteOrder": "ABCD",
+
+  "connection": {
+    "serial": {
+      "portName": "COM3",
+      "baudRate": 9600,
+      "parity": "None",
+      "dataBits": 8,
+      "stopBits": "One"
+    },
+    "connectTimeoutMs": 3000,
+    "readTimeoutMs": 500,
+    "writeTimeoutMs": 500
+  },
+
+  "retry": {
+    "maxRetries": 3,
+    "delayMs": 100,
+    "maxDelayMs": 2000,
+    "backoff": "Exponential",
+    "useJitter": true
+  },
+
+  "readOptions": {
+    "maxRegistersPerRead": 120,
+    "maxAddressGap": 0,
+    "interRequestDelayMs": 5
+  },
+
+  "registers": [
+    {
+      "name": "Force",
+      "address": 100,
+      "dataType": "Float32",
+      "scale": 0.01,
+      "unit": "N",
+      "allowTare": true,
+      "description": "Filtered force value"
+    },
+    {
+      "name": "Temperature",
+      "address": 102,
+      "dataType": "Int16",
+      "scale": 0.1,
+      "unit": "C",
+      "description": "Amplifier board temperature"
+    },
+    {
+      "name": "StatusWord",
+      "address": 103,
+      "dataType": "UInt16",
+      "description": "Bit field: 0 = ready, 1 = overload, 2 = sensor break"
+    },
+    {
+      "name": "AdcCounts",
+      "address": 200,
+      "registerType": "Input",
+      "dataType": "Int32",
+      "byteOrder": "CDAB",
+      "unit": "counts",
+      "description": "Raw ADC value (word-swapped)"
+    },
+    {
+      "name": "Overload",
+      "address": 0,
+      "registerType": "DiscreteInput",
+      "dataType": "Bool",
+      "description": "Overload alarm"
+    }
+  ]
+}
