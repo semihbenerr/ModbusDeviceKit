@@ -1,5 +1,7 @@
 # ModbusDeviceKit
 
+🇬🇧 **English** | [🇹🇷 Türkçe](https://github.com/semihbenerr/ModbusDeviceKit/blob/main/README.tr.md)
+
 [![NuGet](https://img.shields.io/nuget/v/ModbusDeviceKit.svg)](https://www.nuget.org/packages/ModbusDeviceKit)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/semihbenerr/ModbusDeviceKit/blob/main/LICENSE)
 
@@ -7,20 +9,20 @@
 dotnet add package ModbusDeviceKit
 ```
 
-Modbus RTU/TCP cihazlarını (load cell, tork sensörü, sıcaklık/basınç transmitteri…) **JSON profil dosyalarıyla**
-tanımlayıp okuyan bir .NET 8 kütüphanesi. Yeni bir cihaz markası geldiğinde register haritasını koda yazmak yerine
-bir JSON profili eklemeniz yeterli.
+A .NET 8 library that reads Modbus RTU/TCP devices (load cells, torque sensors, temperature/pressure transmitters…)
+described by **JSON profile files**. When a new device brand arrives, you add a JSON profile instead of hand-coding
+its register map.
 
-- Tüm register'ları tek çağrıda okur; bitişik register'ları **tek Modbus isteğinde** birleştirir
-- `Int16/UInt16/Int32/UInt32/Float32/Int64/UInt64/Float64/Bool` ve `ABCD/CDAB/BADC/DCBA` byte order
-- `değer = ham × scale + offset − tare` ile ölçeklenmiş, isimlendirilmiş sonuç
-- Tare/kalibrasyon: `ApplyTareAsync()` (örnek ortalamalı), `ApplyTare()`, `SetTare()`, `ClearTare()`
-- Polly ile retry (sabit/lineer/üstel bekleme, jitter), bağlantı kopunca otomatik yeniden bağlanma
-- Anlamlı exception'lar: `DeviceTimeoutException`, `DeviceConnectionException`, `DeviceSlaveException`…
-- Modbus RTU (seri port), Modbus TCP ve RTU-over-TCP (seri/Ethernet dönüştürücüler); altyapı NModbus
-- Tamamen async API, thread-safe; birden fazla cihaz aynı RS-485 hattını (transport'u) paylaşabilir
+- Reads every register in one call and merges adjacent registers into **a single Modbus request**
+- `Int16/UInt16/Int32/UInt32/Float32/Int64/UInt64/Float64/Bool` with `ABCD/CDAB/BADC/DCBA` byte orders
+- Named, scaled results: `value = raw × scale + offset − tare`
+- Tare/calibration: `ApplyTareAsync()` (averaged samples), `ApplyTare()`, `SetTare()`, `ClearTare()`
+- Retries with Polly (constant/linear/exponential backoff, jitter) and automatic reconnect when the link drops
+- Meaningful exceptions: `DeviceTimeoutException`, `DeviceConnectionException`, `DeviceSlaveException`…
+- Modbus RTU (serial port), Modbus TCP and RTU-over-TCP (serial-to-Ethernet converters), built on NModbus
+- Fully async and thread-safe; several devices can share one RS-485 line (transport)
 
-## Hızlı başlangıç
+## Quick start
 
 ```csharp
 using ModbusDeviceKit;
@@ -29,16 +31,16 @@ await using var reader = await DeviceReader.CreateFromFileAsync("device-profile.
 await reader.ConnectAsync();
 
 DeviceReading reading = await reader.ReadAsync();
-double force = reading["Force"];                     // ölçeklenmiş + tare uygulanmış değer
+double force = reading["Force"];                     // scaled value with tare applied
 RegisterValue temp = reading.GetRegister("Temperature");
-Console.WriteLine($"{temp.Value} {temp.Unit} (ham: {temp.RawValue})");
+Console.WriteLine($"{temp.Value} {temp.Unit} (raw: {temp.RawValue})");
 
 Dictionary<string, double> values = reading.ToDictionary();
 
-await reader.ApplyTareAsync(samples: 10);            // "allowTare": true olan register'ları sıfırla
+await reader.ApplyTareAsync(samples: 10);            // zero every register with "allowTare": true
 ```
 
-Transport'u kendiniz oluşturmak isterseniz (ör. aynı RS-485 hattında birden fazla cihaz):
+To create the transport yourself (e.g. several devices on the same RS-485 line):
 
 ```csharp
 using System.IO.Ports;
@@ -50,16 +52,16 @@ using var loadCell = new DeviceReader(DeviceProfile.LoadFromFile("loadcell.json"
 using var torque   = new DeviceReader(DeviceProfile.LoadFromFile("torque.json"), bus);
 ```
 
-## Profil formatı
+## Profile format
 
 ```jsonc
 {
-  "deviceName": "LoadCell_XYZ123",       // zorunlu
+  "deviceName": "LoadCell_XYZ123",       // required
   "protocol": "ModbusRTU",               // ModbusRTU | ModbusTCP | ModbusRtuOverTcp
   "slaveId": 1,
-  "byteOrder": "ABCD",                   // varsayılan byte order: ABCD | CDAB | BADC | DCBA
+  "byteOrder": "ABCD",                   // default byte order: ABCD | CDAB | BADC | DCBA
 
-  "connection": {                        // DeviceReader.Create / ModbusTransportFactory için
+  "connection": {                        // used by DeviceReader.Create / ModbusTransportFactory
     "serial": { "portName": "COM3", "baudRate": 9600, "parity": "None", "dataBits": 8, "stopBits": "One" },
     "tcp":    { "host": "192.168.1.50", "port": 502 },
     "connectTimeoutMs": 3000, "readTimeoutMs": 500, "writeTimeoutMs": 500
@@ -78,50 +80,55 @@ using var torque   = new DeviceReader(DeviceProfile.LoadFromFile("torque.json"),
 }
 ```
 
-| Register alanı | Varsayılan | Açıklama |
+| Register field | Default | Description |
 |---|---|---|
-| `name` | — | Benzersiz isim (büyük/küçük harf duyarsız) |
-| `address` | — | **0 tabanlı** protokol adresi (40101 → 100) |
+| `name` | — | Unique name (case-insensitive) |
+| `address` | — | **Zero-based** protocol address (40101 → 100) |
 | `registerType` | `Holding` | `Holding` (FC03), `Input` (FC04), `Coil` (FC01), `DiscreteInput` (FC02) |
-| `dataType` | `UInt16` | Coil/DiscreteInput için `Bool` zorunlu |
-| `byteOrder` | profil değeri | Register bazında byte order |
-| `scale` / `offset` | 1 / 0 | Kalibrasyon: `ham × scale + offset` |
-| `tare` / `allowTare` | 0 / false | Başlangıç darası; `ApplyTare()` ile toplu darada yer alma |
-| `unit`, `description` | — | Bilgi amaçlı |
+| `dataType` | `UInt16` | `Bool` is required for Coil/DiscreteInput |
+| `byteOrder` | profile value | Per-register byte order |
+| `scale` / `offset` | 1 / 0 | Calibration: `raw × scale + offset` |
+| `tare` / `allowTare` | 0 / false | Initial tare; include the register in `ApplyTare()` (tare all) |
+| `unit`, `description` | — | Informational |
 
-Profil yüklenirken doğrulanır; bilinmeyen alanlar (ör. `"scael"` yazım hatası) ve tutarsız değerler tüm hata
-listesiyle birlikte `DeviceProfileException` olarak raporlanır. JSON içinde yorum satırı kullanılabilir.
+Profiles are validated on load. Unknown fields (e.g. a `"scael"` typo) and inconsistent values are reported
+together in a single `DeviceProfileException` with the full error list. Comments are allowed in the JSON.
 
-## Hata yönetimi
+## Error handling
 
-Her bağlantı/okuma işlemi `retry` ayarlarına göre tekrar denenir. Timeout, CRC/IO hatası, bağlantı kopması,
-"Slave Device Busy" (6), "Acknowledge" (5) ve "Gateway Target Failed To Respond" (11) geçici kabul edilir.
-"Illegal Data Address" gibi cihazın açıkça reddettiği istekler tekrar denenmez.
+Every connect/read operation is retried according to the `retry` settings. Timeouts, CRC/IO errors, dropped
+connections, "Slave Device Busy" (6), "Acknowledge" (5) and "Gateway Target Failed To Respond" (11) are treated as
+transient. Requests the device explicitly rejects, such as "Illegal Data Address", are not retried.
 
-| Exception | Ne zaman |
+| Exception | When |
 |---|---|
-| `DeviceTimeoutException` | Cihaz tüm denemelerde cevap vermedi |
-| `DeviceConnectionException` | Port/soket açılamadı |
-| `DeviceSlaveException` | Cihaz Modbus exception cevabı döndü (`ExceptionCode`, `ExceptionName`) |
-| `DeviceCommunicationException` | CRC/çerçeve/IO hatası (diğerlerinin de temel sınıfı) |
-| `DeviceProfileException` | Profil hatalı (`Errors` listesi) |
+| `DeviceTimeoutException` | The device did not answer in any attempt |
+| `DeviceConnectionException` | The port/socket could not be opened |
+| `DeviceSlaveException` | The device returned a Modbus exception response (`ExceptionCode`, `ExceptionName`) |
+| `DeviceCommunicationException` | CRC/framing/IO error (also the base class of the timeout and slave exceptions) |
+| `DeviceProfileException` | The profile is invalid (`Errors` list) |
 
-Tümü `ModbusDeviceKitException`'dan türer; `DeviceName`, `SlaveId`, `Attempts` bilgilerini taşır.
+All of them derive from `ModbusDeviceKitException`. Communication errors carry `DeviceName`, `SlaveId` and
+`Attempts`; connection errors carry `Endpoint` and `Attempts`.
 
-## Örnek konsol uygulaması
+## Console sample
 
 ```bash
-dotnet run --project samples/ModbusDeviceKit.ConsoleSample                       # device-profile.json, 5 sn aralık
+dotnet run --project samples/ModbusDeviceKit.ConsoleSample                       # device-profile.json, every 5 s
 dotnet run --project samples/ModbusDeviceKit.ConsoleSample -- my-device.json --interval 2
-dotnet run --project samples/ModbusDeviceKit.ConsoleSample -- --simulate         # donanımsız, dahili simülatör
+dotnet run --project samples/ModbusDeviceKit.ConsoleSample -- --simulate         # no hardware, built-in simulator
 ```
 
-Çalışırken: `T` = dara al (5 örnek ortalaması), `C` = darayı temizle, `Q`/`Esc` = çıkış.
+While running: `T` = tare (average of 5 samples), `C` = clear tare, `Q`/`Esc` = quit.
 
-## Derleme, test, paketleme
+## Build, test, pack
 
 ```bash
 dotnet build
 dotnet test
 dotnet pack src/ModbusDeviceKit -c Release -o artifacts
 ```
+
+## License
+
+[MIT](https://github.com/semihbenerr/ModbusDeviceKit/blob/main/LICENSE) © Semih Bener
