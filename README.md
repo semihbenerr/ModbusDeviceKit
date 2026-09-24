@@ -1,5 +1,12 @@
 # ModbusDeviceKit
 
+[![NuGet](https://img.shields.io/nuget/v/ModbusDeviceKit.svg)](https://www.nuget.org/packages/ModbusDeviceKit)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/semihbenerr/ModbusDeviceKit/blob/main/LICENSE)
+
+```bash
+dotnet add package ModbusDeviceKit
+```
+
 Modbus RTU/TCP cihazlarını (load cell, tork sensörü, sıcaklık/basınç transmitteri…) **JSON profil dosyalarıyla**
 tanımlayıp okuyan bir .NET 8 kütüphanesi. Yeni bir cihaz markası geldiğinde register haritasını koda yazmak yerine
 bir JSON profili eklemeniz yeterli.
