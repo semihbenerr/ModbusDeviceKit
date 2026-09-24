@@ -16,7 +16,11 @@ internal sealed class FakeModbusTransport : IModbusTransport
     /// <summary>Exceptions thrown (one per call) by the next connect calls.</summary>
     public Queue<Exception> ConnectFailures { get; } = new();
 
+    /// <summary>Called for every read (function, start, count); a returned exception is thrown for that request.</summary>
+    public Func<string, ushort, ushort, Exception?>? ReadInterceptor { get; set; }
+
     public List<string> Requests { get; } = new();
+    public List<string> Writes { get; } = new();
     public int ConnectCalls { get; private set; }
 
     public string Description => "Fake transport";
@@ -63,18 +67,21 @@ internal sealed class FakeModbusTransport : IModbusTransport
 
     public Task WriteSingleRegisterAsync(byte slaveId, ushort address, ushort value, CancellationToken cancellationToken = default)
     {
+        Writes.Add($"FC06 {address}");
         HoldingRegisters[address] = value;
         return Task.CompletedTask;
     }
 
     public Task WriteMultipleRegistersAsync(byte slaveId, ushort startAddress, ushort[] values, CancellationToken cancellationToken = default)
     {
+        Writes.Add($"FC16 {startAddress} x{values.Length}");
         SetHolding(startAddress, values);
         return Task.CompletedTask;
     }
 
     public Task WriteSingleCoilAsync(byte slaveId, ushort address, bool value, CancellationToken cancellationToken = default)
     {
+        Writes.Add($"FC05 {address}");
         Coils[address] = value;
         return Task.CompletedTask;
     }
@@ -95,6 +102,8 @@ internal sealed class FakeModbusTransport : IModbusTransport
         Requests.Add($"{function} {start} x{count}");
         if (ReadFailures.TryDequeue(out var failure))
             throw failure;
+        if (ReadInterceptor?.Invoke(function, start, count) is { } intercepted)
+            throw intercepted;
 
         var result = new T[count];
         for (int i = 0; i < count; i++)

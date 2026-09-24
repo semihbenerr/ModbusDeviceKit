@@ -39,6 +39,13 @@ public sealed class RegisterDefinition
     /// </summary>
     public bool AllowTare { get; set; }
 
+    /// <summary>
+    /// When <c>true</c> the register can be written with <see cref="DeviceReader.WriteAsync"/>.
+    /// Writes are opt-in so that a typo in a register name can never change a device setting by accident.
+    /// Only valid for <see cref="Profiles.RegisterType.Holding"/> and <see cref="Profiles.RegisterType.Coil"/>.
+    /// </summary>
+    public bool Writable { get; set; }
+
     /// <summary>Engineering unit shown next to the value, e.g. <c>"N"</c>, <c>"C"</c>, <c>"bar"</c>.</summary>
     public string Unit { get; set; } = string.Empty;
 

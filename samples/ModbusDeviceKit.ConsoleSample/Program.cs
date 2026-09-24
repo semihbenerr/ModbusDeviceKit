@@ -150,6 +150,12 @@ static void PrintReading(DeviceReading reading)
     Console.WriteLine($"[{reading.Timestamp:HH:mm:ss}] {reading.DeviceName}  ({reading.Duration.TotalMilliseconds:0} ms)");
     foreach (var value in reading.Registers)
     {
+        if (!value.IsValid)
+        {
+            Console.WriteLine($"  {value.Name,-14} {"n/a",14} {value.Unit,-7}   ({value.Error})");
+            continue;
+        }
+
         string number = value.DataType == RegisterDataType.Bool
             ? (value.AsBoolean ? "ON" : "OFF")
             : value.Value.ToString("0.###", CultureInfo.InvariantCulture);

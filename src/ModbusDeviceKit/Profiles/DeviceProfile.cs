@@ -307,6 +307,8 @@ public sealed class DeviceProfile
                 errors.Add($"{label}: 'tare' must be a finite number.");
             if (reg.DataType == RegisterDataType.Bool && (reg.AllowTare || reg.Tare != 0))
                 errors.Add($"{label}: Bool registers cannot be tared.");
+            if (reg.Writable && reg.RegisterType is RegisterType.Input or RegisterType.DiscreteInput)
+                errors.Add($"{label}: {reg.RegisterType} registers are read-only and cannot be 'writable'.");
         }
     }
 

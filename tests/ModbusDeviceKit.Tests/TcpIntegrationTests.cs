@@ -98,6 +98,32 @@ public sealed class TcpIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Bus_scanner_finds_the_slaves_that_answer()
+    {
+        await using var transport = new ModbusTcpTransport("127.0.0.1", Port, readTimeoutMs: 300);
+
+        var results = await ModbusBusScanner.ScanAsync(transport, new byte[] { 1, 9 }, address: 100, attempts: 1);
+
+        Assert.True(results.Single(r => r.SlaveId == 1).Responded);
+        Assert.False(results.Single(r => r.SlaveId == 9).Responded);
+    }
+
+    [Fact]
+    public async Task Writes_reach_a_real_modbus_tcp_slave()
+    {
+        var profile = CreateProfile();
+        profile.GetRegister("Force").Writable = true;
+        profile.GetRegister("Enabled").Writable = true;
+        await using var reader = DeviceReader.Create(profile);
+
+        await reader.WriteAsync("Force", 432.1);
+        await reader.WriteAsync("Enabled", 0);
+
+        Assert.Equal(432.1, await reader.ReadValueAsync("Force"), 2);
+        Assert.False(_store.CoilDiscretes.ReadPoints(5, 1)[0]);
+    }
+
+    [Fact]
     public async Task Throws_DeviceConnectionException_when_nothing_listens()
     {
         int freePort;

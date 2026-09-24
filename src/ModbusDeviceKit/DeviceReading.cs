@@ -39,6 +39,12 @@ public sealed class DeviceReading : IReadOnlyDictionary<string, double>
     /// <summary>All values in profile order.</summary>
     public IReadOnlyList<RegisterValue> Registers { get; }
 
+    /// <summary><c>true</c> when every register was read successfully.</summary>
+    public bool IsComplete => Registers.All(r => r.IsValid);
+
+    /// <summary>Registers that could not be read in this cycle (only with partial reads enabled).</summary>
+    public IReadOnlyList<RegisterValue> FailedRegisters => Registers.Where(r => !r.IsValid).ToArray();
+
     /// <summary>Final engineering value of a register (case-insensitive name).</summary>
     /// <exception cref="KeyNotFoundException">The register is not part of this reading.</exception>
     public double this[string registerName] => GetRegister(registerName).Value;

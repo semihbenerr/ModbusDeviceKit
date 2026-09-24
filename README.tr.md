@@ -21,6 +21,7 @@ bir JSON profili eklemeniz yeterli.
 - Anlamlı exception'lar: `DeviceTimeoutException`, `DeviceConnectionException`, `DeviceSlaveException`…
 - Modbus RTU (seri port), Modbus TCP ve RTU-over-TCP (seri/Ethernet dönüştürücüler); altyapı NModbus
 - Tamamen async API, thread-safe; birden fazla cihaz aynı RS-485 hattını (transport'u) paylaşabilir
+- Sahaya hazır: kısmi okuma, reddedilen blokları otomatik bölme, izinli yazma, cihaz yoklama ve hat tarama
 
 ## Hızlı başlangıç
 
@@ -69,13 +70,15 @@ using var torque   = new DeviceReader(DeviceProfile.LoadFromFile("torque.json"),
 
   "retry": { "maxRetries": 3, "delayMs": 100, "maxDelayMs": 2000, "backoff": "Exponential", "useJitter": true },
 
-  "readOptions": { "maxRegistersPerRead": 120, "maxAddressGap": 0, "interRequestDelayMs": 5 },
+  "readOptions": { "maxRegistersPerRead": 120, "maxAddressGap": 0, "interRequestDelayMs": 5,
+                   "partialReads": true, "splitRejectedBlocks": true },
 
   "registers": [
     { "name": "Force", "address": 100, "dataType": "Float32", "scale": 0.01, "unit": "N", "allowTare": true },
     { "name": "Temperature", "address": 102, "dataType": "Int16", "scale": 0.1, "offset": -0.5, "unit": "C" },
     { "name": "AdcCounts", "address": 200, "registerType": "Input", "dataType": "Int32", "byteOrder": "CDAB" },
-    { "name": "Overload", "address": 0, "registerType": "DiscreteInput", "dataType": "Bool" }
+    { "name": "Overload", "address": 0, "registerType": "DiscreteInput", "dataType": "Bool" },
+    { "name": "Setpoint", "address": 300, "dataType": "Int16", "scale": 0.1, "unit": "N", "writable": true }
   ]
 }
 ```
@@ -89,6 +92,7 @@ using var torque   = new DeviceReader(DeviceProfile.LoadFromFile("torque.json"),
 | `byteOrder` | profil değeri | Register bazında byte order |
 | `scale` / `offset` | 1 / 0 | Kalibrasyon: `ham × scale + offset` |
 | `tare` / `allowTare` | 0 / false | Başlangıç darası; `ApplyTare()` ile toplu darada yer alma |
+| `writable` | false | `WriteAsync` ile yazmaya izin ver (sadece Holding ve Coil) |
 | `unit`, `description` | — | Bilgi amaçlı |
 
 Profil yüklenirken doğrulanır; bilinmeyen alanlar (ör. `"scael"` yazım hatası) ve tutarsız değerler tüm hata
@@ -109,6 +113,45 @@ Her bağlantı/okuma işlemi `retry` ayarlarına göre tekrar denenir. Timeout, 
 | `DeviceProfileException` | Profil hatalı (`Errors` listesi) |
 
 Tümü `ModbusDeviceKitException`'dan türer. İletişim hataları `DeviceName`, `SlaveId` ve `Attempts`, bağlantı hataları `Endpoint` ve `Attempts` bilgisini taşır.
+
+## Saha özellikleri
+
+**Kısmi okuma.** `"partialReads": true` ile tüm denemelere rağmen başarısız olan bir istek artık okumanın tamamını
+düşürmez: o isteğin register'ları `IsValid = false`, `NaN` değer ve `Error` açıklamasıyla döner, geri kalanı normal
+okunur. Hiçbir şey okunamazsa yine exception fırlatılır.
+
+```csharp
+var reading = await reader.ReadAsync();
+if (!reading.IsComplete)
+    foreach (var failed in reading.FailedRegisters)
+        Console.WriteLine($"{failed.Name}: {failed.Error}");
+```
+
+**Reddedilen bloklar.** Birçok cihazın register haritasında boşluklar vardır ve bu boşlukları kapsayan toplu isteği
+reddeder. `"splitRejectedBlocks": true` (varsayılan) iken cihaz böyle bir isteğe "Illegal Data Address" veya
+"Illegal Data Value" dönerse register'lar tek tek okunur; sonraki turlarda aralık bir daha istenmez.
+
+**Yazma.** `"writable": true` işaretli register'lara mühendislik değeri yazılabilir; kütüphane ham değere çevirir
+(`(değer − offset) / scale`) ve 06, 16 veya 05 fonksiyonunu seçer. Yazma izinlidir; bir yazım hatası cihaz ayarını
+yanlışlıkla değiştiremez.
+
+```csharp
+await reader.WriteAsync("Setpoint", 125.5);   // N → ham 1255 → FC06
+```
+
+**Yoklama ve hat tarama.** `ProbeAsync` cihazın cevap verip vermediğini kontrol eder, vermiyorsa neye bakılacağını
+söyler. Modbus exception cevabı "cevap verdi" sayılır: cihaz hatta, sadece adres yanlış. `ModbusBusScanner` aynı işi
+bir slave id aralığı için yapar — RS-485 hattını devreye alırken işe yarar.
+
+```csharp
+DeviceProbeResult probe = await reader.ProbeAsync();
+Console.WriteLine(probe.Message);
+
+await using var bus = new ModbusRtuTransport("COM3", 19200, Parity.Even);
+var found = await ModbusBusScanner.ScanAsync(bus, Enumerable.Range(1, 10).Select(i => (byte)i));
+foreach (var result in found.Where(r => r.Responded))
+    Console.WriteLine($"Slave {result.SlaveId} hatta");
+```
 
 ## Örnek konsol uygulaması
 

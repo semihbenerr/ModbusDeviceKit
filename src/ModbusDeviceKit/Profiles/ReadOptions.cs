@@ -14,4 +14,19 @@ public sealed class ReadOptions
 
     /// <summary>Pause between consecutive requests of one reading, in milliseconds. Some RS-485 devices need it. Defaults to 0.</summary>
     public int InterRequestDelayMs { get; set; }
+
+    /// <summary>
+    /// When <c>true</c>, a request that still fails after all retries does not fail the whole reading:
+    /// its registers are returned with <see cref="RegisterValue.IsValid"/> = <c>false</c> and a <c>NaN</c> value,
+    /// and the other registers are read normally. An exception is thrown only if no register could be read.
+    /// Defaults to <c>false</c> (any failure throws).
+    /// </summary>
+    public bool PartialReads { get; set; }
+
+    /// <summary>
+    /// When <c>true</c> (default) and the device rejects a multi-register request with
+    /// "Illegal Data Address" or "Illegal Data Value", the registers of that request are read one by one
+    /// from then on. Useful for devices with holes in their register map.
+    /// </summary>
+    public bool SplitRejectedBlocks { get; set; } = true;
 }

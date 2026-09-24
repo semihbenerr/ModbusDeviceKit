@@ -21,6 +21,7 @@ its register map.
 - Meaningful exceptions: `DeviceTimeoutException`, `DeviceConnectionException`, `DeviceSlaveException`…
 - Modbus RTU (serial port), Modbus TCP and RTU-over-TCP (serial-to-Ethernet converters), built on NModbus
 - Fully async and thread-safe; several devices can share one RS-485 line (transport)
+- Field-ready: partial reads, automatic splitting of rejected blocks, opt-in writes, device probing and bus scanning
 
 ## Quick start
 
@@ -69,13 +70,15 @@ using var torque   = new DeviceReader(DeviceProfile.LoadFromFile("torque.json"),
 
   "retry": { "maxRetries": 3, "delayMs": 100, "maxDelayMs": 2000, "backoff": "Exponential", "useJitter": true },
 
-  "readOptions": { "maxRegistersPerRead": 120, "maxAddressGap": 0, "interRequestDelayMs": 5 },
+  "readOptions": { "maxRegistersPerRead": 120, "maxAddressGap": 0, "interRequestDelayMs": 5,
+                   "partialReads": true, "splitRejectedBlocks": true },
 
   "registers": [
     { "name": "Force", "address": 100, "dataType": "Float32", "scale": 0.01, "unit": "N", "allowTare": true },
     { "name": "Temperature", "address": 102, "dataType": "Int16", "scale": 0.1, "offset": -0.5, "unit": "C" },
     { "name": "AdcCounts", "address": 200, "registerType": "Input", "dataType": "Int32", "byteOrder": "CDAB" },
-    { "name": "Overload", "address": 0, "registerType": "DiscreteInput", "dataType": "Bool" }
+    { "name": "Overload", "address": 0, "registerType": "DiscreteInput", "dataType": "Bool" },
+    { "name": "Setpoint", "address": 300, "dataType": "Int16", "scale": 0.1, "unit": "N", "writable": true }
   ]
 }
 ```
@@ -89,6 +92,7 @@ using var torque   = new DeviceReader(DeviceProfile.LoadFromFile("torque.json"),
 | `byteOrder` | profile value | Per-register byte order |
 | `scale` / `offset` | 1 / 0 | Calibration: `raw × scale + offset` |
 | `tare` / `allowTare` | 0 / false | Initial tare; include the register in `ApplyTare()` (tare all) |
+| `writable` | false | Allow `WriteAsync` (Holding and Coil only) |
 | `unit`, `description` | — | Informational |
 
 Profiles are validated on load. Unknown fields (e.g. a `"scael"` typo) and inconsistent values are reported
@@ -110,6 +114,45 @@ transient. Requests the device explicitly rejects, such as "Illegal Data Address
 
 All of them derive from `ModbusDeviceKitException`. Communication errors carry `DeviceName`, `SlaveId` and
 `Attempts`; connection errors carry `Endpoint` and `Attempts`.
+
+## Field features
+
+**Partial reads.** With `"partialReads": true`, a request that still fails after all retries no longer fails the
+whole reading: its registers come back with `IsValid = false`, a `NaN` value and an `Error` text, while the rest is
+read normally. An exception is thrown only when nothing at all could be read.
+
+```csharp
+var reading = await reader.ReadAsync();
+if (!reading.IsComplete)
+    foreach (var failed in reading.FailedRegisters)
+        Console.WriteLine($"{failed.Name}: {failed.Error}");
+```
+
+**Rejected blocks.** Many devices have holes in their register map and refuse a multi-register request that covers
+them. With `"splitRejectedBlocks": true` (default), when the device answers "Illegal Data Address" or "Illegal Data
+Value" to such a request, its registers are read one by one — and from then on without asking for the range again.
+
+**Writes.** Registers marked `"writable": true` can be written with engineering values; the library converts back to
+raw units (`(value − offset) / scale`) and picks function 06, 16 or 05. Writes are opt-in, so a typo can never change
+a device setting.
+
+```csharp
+await reader.WriteAsync("Setpoint", 125.5);   // N → raw 1255 → FC06
+```
+
+**Probing and bus scan.** `ProbeAsync` checks whether a device answers and explains what to check when it does not.
+A Modbus exception answer counts as "responded": the device is online, only the address is wrong.
+`ModbusBusScanner` does the same for a range of slave ids — handy when commissioning an RS-485 line.
+
+```csharp
+DeviceProbeResult probe = await reader.ProbeAsync();
+Console.WriteLine(probe.Message);
+
+await using var bus = new ModbusRtuTransport("COM3", 19200, Parity.Even);
+var found = await ModbusBusScanner.ScanAsync(bus, Enumerable.Range(1, 10).Select(i => (byte)i));
+foreach (var result in found.Where(r => r.Responded))
+    Console.WriteLine($"Slave {result.SlaveId} is online");
+```
 
 ## Console sample
 

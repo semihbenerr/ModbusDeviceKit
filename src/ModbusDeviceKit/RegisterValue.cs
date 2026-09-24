@@ -37,11 +37,22 @@ public sealed record RegisterValue
     public IReadOnlyList<ushort> RawRegisters { get; init; } = Array.Empty<ushort>();
 
     /// <summary>The value as a boolean (non-zero = <c>true</c>). Mainly for coils / discrete inputs.</summary>
-    public bool AsBoolean => Value != 0;
+    public bool AsBoolean => IsValid && Value != 0;
+
+    /// <summary>
+    /// <c>false</c> when the register could not be read in this cycle (only with <see cref="Profiles.ReadOptions.PartialReads"/>).
+    /// <see cref="Value"/>, <see cref="RawValue"/> and <see cref="CalibratedValue"/> are then <c>NaN</c>.
+    /// </summary>
+    public bool IsValid { get; init; } = true;
+
+    /// <summary>Why the register could not be read, when <see cref="IsValid"/> is <c>false</c>.</summary>
+    public string? Error { get; init; }
 
     /// <inheritdoc />
     public override string ToString() =>
-        string.IsNullOrEmpty(Unit)
+        !IsValid
+            ? $"{Name} = <{Error ?? "not read"}>"
+            : string.IsNullOrEmpty(Unit)
             ? string.Create(CultureInfo.InvariantCulture, $"{Name} = {Value:G6}")
             : string.Create(CultureInfo.InvariantCulture, $"{Name} = {Value:G6} {Unit}");
 }

@@ -101,13 +101,13 @@ public class DeviceReaderTests
     public async Task Does_not_retry_when_the_device_rejects_the_request()
     {
         var transport = CreateTransport();
-        transport.ReadFailures.Enqueue(new DeviceSlaveException("illegal address", 7, 3, 2));
+        transport.ReadFailures.Enqueue(new DeviceSlaveException("illegal function", 7, 3, 1));
         await using var reader = new DeviceReader(CreateProfile(maxRetries: 3), transport);
 
         var ex = await Assert.ThrowsAsync<DeviceSlaveException>(() => reader.ReadAsync());
 
-        Assert.Equal(2, ex.ExceptionCode);
-        Assert.Equal("Illegal Data Address", ex.ExceptionName);
+        Assert.Equal(1, ex.ExceptionCode);
+        Assert.Equal("Illegal Function", ex.ExceptionName);
         Assert.Equal(1, ex.Attempts);
         Assert.Single(transport.Requests);
     }

@@ -31,7 +31,9 @@
   "readOptions": {
     "maxRegistersPerRead": 120,
     "maxAddressGap": 0,
-    "interRequestDelayMs": 5
+    "interRequestDelayMs": 5,
+    "partialReads": true,
+    "splitRejectedBlocks": true
   },
 
   "registers": [
